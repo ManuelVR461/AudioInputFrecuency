@@ -1,4 +1,4 @@
-from PyQt5.QtWidgets import QApplication, QMainWindow, QMessageBox
+from PyQt5.QtWidgets import QApplication, QMainWindow, QMessageBox, QLabel
 from PyQt5.QtWidgets import QGroupBox, QVBoxLayout, QWidget
 from PyQt5.QtCore import pyqtSlot, pyqtSignal
 from pyqtgraph.Qt import QtGui, QtCore
@@ -19,7 +19,7 @@ import struct
 pg.setConfigOptions(antialias=True)
 
 class Window(QMainWindow): 
-    CHUNK = 4096 #chunk
+    CHUNK = 4096
     RATE = 44100
     T = 1/RATE
     seguir = True
@@ -29,6 +29,7 @@ class Window(QMainWindow):
     
     data_input_senal = pyqtSignal(np.ndarray)
     data_input_frecuencia = pyqtSignal(np.ndarray)
+    data_input_fps = pyqtSignal(str)
 
     def __init__(self): 
         super().__init__() 
@@ -43,6 +44,7 @@ class Window(QMainWindow):
         self.timeTcpAnt = 0
         self.data_input_senal.connect(self.setDataPlotSenal)
         self.data_input_frecuencia.connect(self.setDataPlotFrecuencia)
+        self.data_input_fps.connect(self.setDataLabelFps)
         recorder = threading.Thread(name='Cronometro', target=self.openStream)
         recorder.start()
         self.show()
@@ -60,6 +62,10 @@ class Window(QMainWindow):
         self.plt1 = pg.PlotWidget()
         self.plt2 = pg.PlotWidget()
         filas.addWidget(self.plt1)
+        self.labelFps = QLabel()
+        self.labelFps.setText('Frames por segundos: 0.0')
+        self.labelFps.setStyleSheet('color: green')
+        filas.addWidget(self.labelFps)
         filas.addWidget(self.plt2)
 
         gcentral.setLayout(filas)
@@ -87,6 +93,12 @@ class Window(QMainWindow):
     def setDataPlotFrecuencia(self,data):
         self.plt2.plot(data,pen=(255,0,0),clear=True)
 
+
+    @pyqtSlot(str)
+    def setDataLabelFps(self,fps):
+        self.labelFps.setText(fps)
+
+
     def closeEvent(self, event):
         res = QMessageBox.question(self,"Salir ...","Seguro que quieres cerrar",QMessageBox.Yes|QMessageBox.No)
         if res==QMessageBox.Yes:
@@ -106,6 +118,12 @@ class Window(QMainWindow):
         self.data_input_senal.emit(data)
         #Frecuencia
         self.data_input_frecuencia.emit(frecuencia)
+
+        #Label fps
+        timeAct = time.time()           
+        fps = 1 / (timeAct - self.timeAnt)
+        self.timeAnt = timeAct
+        self.data_input_fps.emit('Frames per second: {:2.1f}'.format(fps))
 
         return (in_data, pyaudio.paContinue)
 
