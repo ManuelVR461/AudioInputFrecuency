@@ -28,14 +28,12 @@ class Window(QMainWindow):
     CHANNELS = 2
     
     data_input_senal = pyqtSignal(np.ndarray)
-    data_input_frecuencia = pyqtSignal(np.ndarray)
-    data_input_fps = pyqtSignal(str)
 
     def __init__(self): 
         super().__init__() 
         self.p = pyaudio.PyAudio()
         self.setWindowTitle("Audio Master ") 
-        self.setGeometry(100, 100, 800, 600)
+        self.setGeometry(100, 100, 400, 300)
         self.ejecutando = True
         self.setLayoutApp()
         self.initPlot()
@@ -43,8 +41,6 @@ class Window(QMainWindow):
         self.timeAnt =  0
         self.timeTcpAnt = 0
         self.data_input_senal.connect(self.setDataPlotSenal)
-        self.data_input_frecuencia.connect(self.setDataPlotFrecuencia)
-        self.data_input_fps.connect(self.setDataLabelFps)
         recorder = threading.Thread(name='Cronometro', target=self.openStream)
         recorder.start()
         self.show()
@@ -59,14 +55,9 @@ class Window(QMainWindow):
         fcentral = QVBoxLayout()
         gcentral = QGroupBox("Forma de Onda")
         filas = QVBoxLayout()
+
         self.plt1 = pg.PlotWidget()
-        self.plt2 = pg.PlotWidget()
         filas.addWidget(self.plt1)
-        self.labelFps = QLabel()
-        self.labelFps.setText('Frames por segundos: 0.0')
-        self.labelFps.setStyleSheet('color: green')
-        filas.addWidget(self.labelFps)
-        filas.addWidget(self.plt2)
 
         gcentral.setLayout(filas)
         fcentral.addWidget(gcentral)
@@ -75,28 +66,13 @@ class Window(QMainWindow):
         
         
     def initPlot(self):
-        self.plt1.setYRange(-20000, 20000)
-        self.plt1.getPlotItem().setTitle(title="Representación temporal")
-        self.plt1.getAxis('bottom').setLabel('Tiempo')
-        self.plt1.getAxis('left').setLabel('Nivel')
-        self.plt2.setYRange(0, 2000)
-        self.plt2.getPlotItem().setTitle(title="Representación frecuencial (FFT)")
-        self.plt2.getAxis('bottom').setLabel('Frecuencia', units='Hz')
-        self.plt2.getAxis('bottom').enableAutoSIPrefix(enable=True)
-        self.plt2.getAxis('left').setLabel('Nivel')
+        self.plt1.setYRange(-10000, 10000)
+        self.plt1.showAxis('bottom', False)
+        self.plt1.showAxis('left', False)
 
     @pyqtSlot(np.ndarray)
     def setDataPlotSenal(self, data):
         self.plt1.plot(data,pen=(255,0,0),clear=True)
-
-    @pyqtSlot(np.ndarray)
-    def setDataPlotFrecuencia(self, data):
-        self.plt2.plot(data,pen=(255,0,0),clear=True)
-
-
-    @pyqtSlot(str)
-    def setDataLabelFps(self,fps):
-        self.labelFps.setText(fps)
 
 
     def closeEvent(self, event):
@@ -116,15 +92,6 @@ class Window(QMainWindow):
         frecuencia = (2.0 / self.CHUNK) * np.abs(freq[range(n)])
         #Señal temporal
         self.data_input_senal.emit(data)
-        #Frecuencia
-        self.data_input_frecuencia.emit(frecuencia)
-
-        #Label fps
-        timeAct = time.time()           
-        fps = 1 / (timeAct - self.timeAnt)
-        self.timeAnt = timeAct
-        self.data_input_fps.emit('Frames per second: {:2.1f}'.format(fps))
-
         return (in_data, pyaudio.paContinue)
 
     
